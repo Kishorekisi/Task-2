@@ -1,0 +1,87 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+from sklearn.metrics import silhouette_score
+
+# Load the data
+# Assume the CSV file is named 'customer_purchases.csv' and has columns representing different purchase categories
+data = pd.read_csv('customer_purchases.csv')
+
+# Display the first few rows of the dataset
+print(data.head())
+
+# Preprocess the data
+# Check for missing values
+print(data.isnull().sum())
+
+# Fill missing values or drop rows/columns with missing values
+# For simplicity, let's drop rows with missing values
+data = data.dropna()
+
+# Standardize the data
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data)
+
+# Determine the optimal number of clusters using the Elbow Method
+sse = []
+for k in range(1, 11):
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(data_scaled)
+    sse.append(kmeans.inertia_)
+
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, 11), sse, marker='o')
+plt.xlabel('Number of clusters')
+plt.ylabel('SSE')
+plt.title('Elbow Method for Optimal k')
+plt.show()
+
+# Determine the optimal number of clusters using the Silhouette Score
+silhouette_scores = []
+for k in range(2, 11):
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(data_scaled)
+    score = silhouette_score(data_scaled, kmeans.labels_)
+    silhouette_scores.append(score)
+
+plt.figure(figsize=(10, 6))
+plt.plot(range(2, 11), silhouette_scores, marker='o')
+plt.xlabel('Number of clusters')
+plt.ylabel('Silhouette Score')
+plt.title('Silhouette Score for Optimal k')
+plt.show()
+
+# Train the K-means model with the optimal number of clusters
+optimal_clusters = 4  # Assume 4 clusters based on the Elbow and Silhouette methods
+kmeans = KMeans(n_clusters=optimal_clusters, random_state=42)
+data['Cluster'] = kmeans.fit_predict(data_scaled)
+
+# Display the first few rows of the dataset with the cluster labels
+print(data.head())
+
+# Analyze the clustering results
+# Summary statistics for each cluster
+cluster_summary = data.groupby('Cluster').mean()
+print(cluster_summary)
+
+# Visualization of clusters (if data is 2-dimensional, otherwise consider dimensionality reduction techniques)
+# Example using PCA for dimensionality reduction
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=2)
+data_pca = pca.fit_transform(data_scaled)
+data_pca = pd.DataFrame(data_pca, columns=['PC1', 'PC2'])
+data_pca['Cluster'] = data['Cluster']
+
+plt.figure(figsize=(10, 6))
+for cluster in range(optimal_clusters):
+    cluster_data = data_pca[data_pca['Cluster'] == cluster]
+    plt.scatter(cluster_data['PC1'], cluster_data['PC2'], label=f'Cluster {cluster}')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.title('K-means Clustering of Customers')
+plt.legend()
+plt.show()
